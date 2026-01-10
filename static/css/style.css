@@ -53,3 +53,56 @@ th {
 .footer {
   margin-top: 18px;
 }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.big {
+  font-size: 34px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0 0;
+}
+
+.list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f2f2f2;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

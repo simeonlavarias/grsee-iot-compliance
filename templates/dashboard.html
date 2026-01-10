@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRSee - Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>GRSee – Dashboard</h1>
+      <p>Software-only mode (mock events). Hardware integration comes later.</p>
+      <p>
+        <a href="/events">View Events</a>
+      </p>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Total Events</h3>
+        <div class="big">{{ stats.total }}</div>
+      </div>
+
+      <div class="card">
+        <h3>Critical</h3>
+        <div class="big sev-critical">{{ stats.severity_counts.critical }}</div>
+      </div>
+
+      <div class="card">
+        <h3>High</h3>
+        <div class="big sev-high">{{ stats.severity_counts.high }}</div>
+      </div>
+
+      <div class="card">
+        <h3>Medium / Low</h3>
+        <div class="big">
+          {{ stats.severity_counts.medium }} / {{ stats.severity_counts.low }}
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <h3>Top Event Types</h3>
+        <ul class="list">
+          {% for name, count in top_event_types %}
+          <li><span>{{ name }}</span><span class="muted">{{ count }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Top Zones</h3>
+        <ul class="list">
+          {% for name, count in top_zones %}
+          <li><span>{{ name }}</span><span class="muted">{{ count }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Recent Alerts (High / Critical)</h3>
+      {% if stats.recent_alerts|length == 0 %}
+        <p class="muted">No high/critical alerts found.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Zone</th>
+              <th>Event</th>
+              <th>Severity</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in stats.recent_alerts %}
+            <tr>
+              <td>{{ e.timestamp }}</td>
+              <td>{{ e.zone }}</td>
+              <td>{{ e.event_type }}</td>
+              <td class="sev sev-{{ e.severity|lower }}">{{ e.severity }}</td>
+              <td>{{ e.summary }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </section>
+
+    <footer class="footer">
+      <a href="/">Home</a>
+    </footer>
+  </div>
+</body>
+</html>
