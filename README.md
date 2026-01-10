@@ -1,8 +1,8 @@
 # GRSee – IoT-Based Compliance Monitoring for Physical Security
 
-GRSee (Governance, Risk, and Security Events) is a **small-scale IoT-based compliance monitoring system** designed to bridge the gap between **physical security events** and **GRC (Governance, Risk, and Compliance) frameworks** in financial institutions.
+GRSee is a **small-scale IoT-based compliance monitoring system** designed to bridge the gap between **physical security events** and **GRC (Governance, Risk, and Compliance) frameworks** in financial institutions.
 
-The system demonstrates how physical security data—such as access control events, motion detection, and environmental monitoring—can be **automatically mapped to compliance standards** like **ISO/IEC 27001** and **PCI DSS** in real time.
+The system demonstrates how physical security data, such as access control events, motion detection, and environmental monitoring, can be **automatically mapped to compliance standards** like **ISO/IEC 27001** and **PCI DSS** in real time.
 
 This project is developed as a **Final Year Honours Project** for the BSc (Hons) Software Engineering programme at the University of Stirling.
 
@@ -17,8 +17,6 @@ This project is developed as a **Final Year Honours Project** for the BSc (Hons)
 * Provide a dashboard for real-time monitoring and audit support
 * Demonstrate feasibility of low-cost, compliance-aware IoT systems
 
----
-
 ## 🏗️ System Architecture Overview
 
 GRSee follows a modular architecture consisting of:
@@ -28,8 +26,6 @@ GRSee follows a modular architecture consisting of:
 * **Middleware Layer** – Event processing and rules engine
 * **Application Layer** – Flask-based dashboard and APIs
 * **Compliance Layer** – Rule-based mapping to ISO 27001 and PCI DSS
-
----
 
 ## 🛠️ Technology Stack
 
@@ -41,8 +37,6 @@ GRSee follows a modular architecture consisting of:
 * **IoT Platform:** Raspberry Pi (planned)
 * **Version Control:** Git & GitHub
 
----
-
 ## 🔬 Evaluation Criteria
 
 The system will be evaluated based on:
@@ -53,14 +47,9 @@ The system will be evaluated based on:
 * **Correct mapping to ISO 27001 and PCI DSS controls**
 * **Audit-readiness through simulated audit scenarios**
 
----
-
 ## 🚧 Project Status
 
-This repository currently contains the **software components** of the system.
-Hardware integration and live sensor testing will be implemented in later stages.
-
----
+The project is still under development. The focus is now on the software components. Development of the hardware aspects of the project will be done after. 
 
 ## 👤 Author
 
@@ -74,3 +63,4 @@ University of Stirling (UAE)
 
 This project is a **prototype and proof of concept** developed for academic purposes.
 It is not intended for direct deployment in production financial environments.
+
