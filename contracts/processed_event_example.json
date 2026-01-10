@@ -1,0 +1,21 @@
+{
+  "event_id": "evt_20260109_132210_0001",
+  "policy_result": {
+    "policy_id": "POL-PA-001",
+    "policy_name": "After-hours restricted access",
+    "is_violation": true,
+    "reason": "Denied attempt after business hours"
+  },
+  "compliance_mapping": {
+    "iso27001_controls": [
+      { "control_id": "A.11.1.2", "title": "Physical entry controls" }
+    ],
+    "pcidss_requirements": [
+      { "requirement_id": "9.x", "title": "Restrict physical access" }
+    ]
+  },
+  "incident": {
+    "create_incident": true,
+    "incident_type": "UNAUTHORIZED_ACCESS_ATTEMPT"
+  }
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "event_id": "evt_20260109_132210_0001",
+    "timestamp": "2026-01-09T13:22:10+08:00",
+    "source": {
+      "device_id": "rfid-01",
+      "device_type": "RFID",
+      "site_id": "site-001",
+      "zone_id": "zone-atm-vault"
+    },
+    "event_type": "RFID_ACCESS_DENIED",
+    "severity": "HIGH",
+    "summary": "Denied access attempt at ATM vault door",
+    "payload": {
+      "card_id": "X123",
+      "reason": "unknown_card",
+      "door_id": "door-vault-1"
+    }
+  }
+]
