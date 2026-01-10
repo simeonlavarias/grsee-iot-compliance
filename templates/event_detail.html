@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRSee - Event Details</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>GRSee – Event Compliance Details</h1>
+      <p>
+        <a href="/dashboard">Dashboard</a> |
+        <a href="/events">Events</a> |
+        <a href="/violations">Violations</a>
+      </p>
+    </header>
+
+    {% if not found %}
+      <div class="card">
+        <h3>Event Not Found</h3>
+        <p class="muted">No event found with ID: <strong>{{ event_id }}</strong></p>
+      </div>
+    {% else %}
+      <section class="grid-2">
+        <div class="card">
+          <h3 style="margin-top: 0;">Raw Event</h3>
+          <p><strong>ID:</strong> {{ raw.event_id }}</p>
+          <p><strong>Time:</strong> {{ raw.timestamp }}</p>
+          <p><strong>Zone:</strong> {{ raw.zone }}</p>
+          <p><strong>Device:</strong> {{ raw.device_type }}</p>
+          <p><strong>Event Type:</strong> {{ raw.event_type }}</p>
+          <p><strong>Severity:</strong>
+            <span class="sev sev-{{ raw.severity|lower }}">{{ raw.severity }}</span>
+          </p>
+          <p><strong>Summary:</strong> {{ raw.summary }}</p>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top: 0;">Policy Decision</h3>
+
+          {% if proc.policy_result.is_violation %}
+            <p>
+              <strong>Status:</strong>
+              <span class="sev sev-high">VIOLATION</span>
+            </p>
+          {% else %}
+            <p>
+              <strong>Status:</strong>
+              <span class="sev sev-low">COMPLIANT</span>
+            </p>
+          {% endif %}
+
+          <p><strong>Policy:</strong>
+            {{ proc.policy_result.policy_name if proc.policy_result.policy_name else "N/A" }}
+          </p>
+          <p><strong>Reason:</strong> {{ proc.policy_result.reason }}</p>
+
+          {% if proc.incident.create_incident %}
+            <p><strong>Incident Suggested:</strong> {{ proc.incident.incident_type }}</p>
+          {% else %}
+            <p class="muted"><strong>Incident Suggested:</strong> None</p>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="grid-2">
+        <div class="card">
+          <h3 style="margin-top: 0;">ISO 27001 Mapping</h3>
+          {% if proc.compliance_mapping.iso27001_controls|length == 0 %}
+            <p class="muted">No ISO mapping for this event.</p>
+          {% else %}
+            <ul class="list">
+              {% for c in proc.compliance_mapping.iso27001_controls %}
+                <li>
+                  <span><strong>{{ c.control_id }}</strong></span>
+                  <span class="muted">{{ c.title }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top: 0;">PCI DSS Mapping</h3>
+          {% if proc.compliance_mapping.pcidss_requirements|length == 0 %}
+            <p class="muted">No PCI mapping for this event.</p>
+          {% else %}
+            <ul class="list">
+              {% for r in proc.compliance_mapping.pcidss_requirements %}
+                <li>
+                  <span><strong>{{ r.requirement_id }}</strong></span>
+                  <span class="muted">{{ r.title }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      </section>
+
+      <section class="card">
+        <h3 style="margin-top: 0;">Raw JSON (for audit evidence)</h3>
+        <pre style="white-space: pre-wrap; margin: 0;">{{ raw | tojson(indent=2) }}</pre>
+      </section>
+    {% endif %}
+
+    <footer class="footer">
+      <a href="/events">Back to Events</a>
+    </footer>
+  </div>
+</body>
+</html>

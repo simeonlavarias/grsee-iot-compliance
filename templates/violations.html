@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GRSee - Violations</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>GRSee – Policy Violations</h1>
+      <p>Rule Engine v1 (software-only mode). These are detected policy/compliance breaches.</p>
+      <p>
+        <a href="/dashboard">Dashboard</a> | <a href="/events">Events</a>
+      </p>
+    </header>
+
+    {% if violations|length == 0 %}
+      <p class="muted">No violations found in the current mock dataset.</p>
+    {% else %}
+      {% for v in violations %}
+      <div class="card" style="margin-bottom: 14px;">
+        <h3 style="margin: 0 0 6px 0;">
+          {{ v.raw.event_type }} — <span class="sev sev-{{ v.raw.severity|lower }}">{{ v.raw.severity }}</span>
+        </h3>
+        <p class="muted" style="margin: 0 0 10px 0;">
+          <strong>Time:</strong> {{ v.raw.timestamp }} |
+          <strong>Zone:</strong> {{ v.raw.zone }} |
+          <strong>Device:</strong> {{ v.raw.device_type }}
+        </p>
+
+        <p style="margin: 0 0 10px 0;"><strong>Summary:</strong> {{ v.raw.summary }}</p>
+
+        <p style="margin: 0 0 6px 0;">
+          <strong>Policy Result:</strong>
+          {{ v.proc.policy_result.policy_name }} —
+          <span class="sev sev-high">Violation</span>
+        </p>
+        <p class="muted" style="margin: 0 0 10px 0;">
+          <strong>Reason:</strong> {{ v.proc.policy_result.reason }}
+        </p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="margin: 0 0 10px 0;">ISO 27001 Mapping</h4>
+            {% if v.proc.compliance_mapping.iso27001_controls|length == 0 %}
+              <p class="muted">No mapping.</p>
+            {% else %}
+              <ul class="list">
+                {% for c in v.proc.compliance_mapping.iso27001_controls %}
+                <li><span>{{ c.control_id }}</span><span class="muted">{{ c.title }}</span></li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+
+          <div class="card">
+            <h4 style="margin: 0 0 10px 0;">PCI DSS Mapping</h4>
+            {% if v.proc.compliance_mapping.pcidss_requirements|length == 0 %}
+              <p class="muted">No mapping.</p>
+            {% else %}
+              <ul class="list">
+                {% for r in v.proc.compliance_mapping.pcidss_requirements %}
+                <li><span>{{ r.requirement_id }}</span><span class="muted">{{ r.title }}</span></li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if v.proc.incident.create_incident %}
+        <p style="margin-top: 10px;">
+          <strong>Incident Suggested:</strong> {{ v.proc.incident.incident_type }}
+        </p>
+        {% endif %}
+
+      <p style="margin-top: 8px;">
+          <a href="/event/{{ v.raw.event_id }}">View full details</a>
+        </p>
+      </div>
+      {% endfor %}
+    {% endif %}
+
+    <footer class="footer">
+      <a href="/dashboard">Back to Dashboard</a>
+    </footer>
+  </div>
+</body>
+</html>
