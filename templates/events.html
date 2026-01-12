@@ -11,20 +11,26 @@
     <header class="header">
       <h1>GRSee – Event Logs</h1>
       <p>Mock data (software-only mode). Hardware integration comes later.</p>
+      <p>
+        <a href="/dashboard">Dashboard</a> |
+        <a href="/violations">Violations</a>
+      </p>
     </header>
 
     <table>
       <thead>
         <tr>
-            <th>Time</th>
-            <th>Device</th>
-            <th>Zone</th>
-            <th>Event</th>
-            <th>Severity</th>
-            <th>Summary</th>
-            <th>Details</th>
+          <th>Time</th>
+          <th>Device</th>
+          <th>Zone</th>
+          <th>Event</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Summary</th>
+          <th>Details</th>
         </tr>
       </thead>
+
       <tbody>
         {% for e in events %}
         <tr>
@@ -32,16 +38,35 @@
           <td>{{ e.device_type }}</td>
           <td>{{ e.zone }}</td>
           <td>{{ e.event_type }}</td>
-          <td class="sev sev-{{ e.severity|lower }}">{{ e.severity }}</td>
+
+          <!-- Severity -->
+          <td class="sev sev-{{ e.severity|lower }}">
+            {{ e.severity }}
+          </td>
+
+          <!-- Compliance Status -->
+          <td>
+            {% if e.compliance_status == "VIOLATION" %}
+              <span class="sev sev-high">VIOLATION</span>
+            {% else %}
+              <span class="sev sev-low">COMPLIANT</span>
+            {% endif %}
+          </td>
+
+          <!-- Summary -->
           <td>{{ e.summary }}</td>
-            <td><a href="/event/{{ e.event_id }}">View</a></td>
+
+          <!-- Details link -->
+          <td>
+            <a href="/event/{{ e.event_id }}">View</a>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
 
     <footer class="footer">
-      <a href="/">Back</a>
+      <a href="/dashboard">Back to Dashboard</a>
     </footer>
   </div>
 </body>

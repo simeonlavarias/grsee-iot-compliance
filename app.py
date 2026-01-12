@@ -19,32 +19,59 @@ def load_events():
 def compute_dashboard_stats(events):
     total = len(events)
 
+    # Counts by severity
     severity_counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     for e in events:
         sev = (e.get("severity") or "").strip().lower()
         if sev in severity_counts:
             severity_counts[sev] += 1
 
+    # Counts by event type
     event_type_counts = {}
     for e in events:
         t = e.get("event_type", "UNKNOWN")
         event_type_counts[t] = event_type_counts.get(t, 0) + 1
 
+    # Counts by zone
     zone_counts = {}
     for e in events:
         z = e.get("zone", "UNKNOWN")
         zone_counts[z] = zone_counts.get(z, 0) + 1
 
+    # Recent alerts = latest HIGH/CRITICAL events (top 5)
     high_alerts = [e for e in events if (e.get("severity", "").lower() in ["high", "critical"])]
     high_alerts = sorted(high_alerts, key=lambda e: e.get("timestamp", ""), reverse=True)[:5]
+
+    # -----------------------------
+    # Compliance KPIs (Rule Engine)
+    # -----------------------------
+    violations_count = 0
+    compliant_count = 0
+
+    for e in events:
+        result = evaluate_event(e)
+        if result["policy_result"]["is_violation"]:
+            violations_count += 1
+        else:
+            compliant_count += 1
+
+    compliance_percent = round((compliant_count / total) * 100, 1) if total > 0 else 0.0
+    violation_percent = round((violations_count / total) * 100, 1) if total > 0 else 0.0
 
     return {
         "total": total,
         "severity_counts": severity_counts,
         "event_type_counts": event_type_counts,
         "zone_counts": zone_counts,
-        "recent_alerts": high_alerts
+        "recent_alerts": high_alerts,
+
+        # New KPIs
+        "violations_count": violations_count,
+        "compliant_count": compliant_count,
+        "compliance_percent": compliance_percent,
+        "violation_percent": violation_percent
     }
+
 
 
 @app.route("/")
@@ -56,7 +83,18 @@ def home():
 def events():
     events_list = load_events()
     events_list = sorted(events_list, key=lambda e: e.get("timestamp", ""), reverse=True)
-    return render_template("events.html", events=events_list)
+
+    # Evaluate compliance status for each event
+    enriched_events = []
+    for e in events_list:
+        result = evaluate_event(e)
+        status = "VIOLATION" if result["policy_result"]["is_violation"] else "COMPLIANT"
+        enriched_events.append({
+            **e,
+            "compliance_status": status
+        })
+
+    return render_template("events.html", events=enriched_events)
 
 
 @app.route("/dashboard")

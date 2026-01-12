@@ -86,7 +86,7 @@ def evaluate_event(event: dict) -> dict:
         return result
 
     # Rule 2: Motion detected after-hours in sensitive zones
-    if event_type == "MOTION_DETECTED" and _is_after_hours(ts) and zone in {"ATM_VAULT", "SERVER_ROOM"}:
+    if event_type == "MOTION_DETECTED" and _is_after_hours(ts) and zone in {"CASH_VAULT", "SERVER_ROOM"}:
         result["policy_result"] = {
             "policy_id": "POL-PA-002",
             "policy_name": "After-hours motion in restricted zone",

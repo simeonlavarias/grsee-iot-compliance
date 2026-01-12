@@ -23,22 +23,31 @@
       </div>
 
       <div class="card">
-        <h3>Critical</h3>
-        <div class="big sev-critical">{{ stats.severity_counts.critical }}</div>
+        <h3>Compliance %</h3>
+        <div class="big sev-low">{{ stats.compliance_percent }}%</div>
+        <p class="muted" style="margin: 6px 0 0 0;">
+          {{ stats.compliant_count }} compliant
+        </p>
       </div>
 
       <div class="card">
-        <h3>High</h3>
-        <div class="big sev-high">{{ stats.severity_counts.high }}</div>
+        <h3>Violation %</h3>
+        <div class="big sev-high">{{ stats.violation_percent }}%</div>
+        <p class="muted" style="margin: 6px 0 0 0;">
+          {{ stats.violations_count }} violations
+        </p>
       </div>
 
       <div class="card">
-        <h3>Medium / Low</h3>
+        <h3>Critical / High</h3>
         <div class="big">
-          {{ stats.severity_counts.medium }} / {{ stats.severity_counts.low }}
+          <span class="sev-critical">{{ stats.severity_counts.critical }}</span>
+          /
+          <span class="sev-high">{{ stats.severity_counts.high }}</span>
         </div>
       </div>
     </section>
+
 
     <section class="grid-2">
       <div class="card">
