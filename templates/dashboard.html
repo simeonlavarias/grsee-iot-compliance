@@ -99,6 +99,55 @@
       {% endif %}
     </section>
 
+  <section class="card">
+  <h3>Compliance by Zone</h3>
+  <p class="muted" style="margin-top: 6px;">
+    Threshold: <strong>{{ threshold }}%</strong> (zones below this require attention)
+  </p>
+
+  {% if zone_rows|length == 0 %}
+    <p class="muted">No zone data available.</p>
+  {% else %}
+    <table>
+      <thead>
+        <tr>
+          <th>Zone</th>
+          <th>Total Events</th>
+          <th>Violations</th>
+          <th>Compliance %</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for z in zone_rows %}
+        <tr>
+          <td>{{ z.zone }}</td>
+          <td>{{ z.total }}</td>
+          <td>{{ z.violations }}</td>
+
+          <td>
+            {% if z.compliance_percent < threshold %}
+              <span class="sev sev-high">{{ z.compliance_percent }}%</span>
+            {% else %}
+              <span class="sev sev-low">{{ z.compliance_percent }}%</span>
+            {% endif %}
+          </td>
+
+          <td>
+            {% if z.compliance_percent < threshold %}
+              <span class="sev sev-high">Needs attention</span>
+            {% else %}
+              <span class="sev sev-low">Within threshold</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+
+
     <footer class="footer">
       <a href="/">Home</a>
     </footer>

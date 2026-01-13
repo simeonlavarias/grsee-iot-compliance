@@ -104,23 +104,61 @@ def dashboard():
 
     stats = compute_dashboard_stats(events_list)
 
+    # Top 5 event types
     top_event_types = sorted(
         stats["event_type_counts"].items(),
         key=lambda x: x[1],
         reverse=True
     )[:5]
 
+    # Top 5 zones by event volume
     top_zones = sorted(
         stats["zone_counts"].items(),
         key=lambda x: x[1],
         reverse=True
     )[:5]
 
+    # -----------------------------
+    # Compliance by Zone (NEW)
+    # -----------------------------
+    zone_breakdown = {}
+
+    for e in events_list:
+        zone = e.get("zone", "UNKNOWN")
+        zone_breakdown.setdefault(zone, {"total": 0, "violations": 0})
+
+        zone_breakdown[zone]["total"] += 1
+
+        result = evaluate_event(e)
+        if result["policy_result"]["is_violation"]:
+            zone_breakdown[zone]["violations"] += 1
+
+    zone_rows = []
+    for zone, counts in zone_breakdown.items():
+        total = counts["total"]
+        violations = counts["violations"]
+        compliant = total - violations
+        compliance_percent = round((compliant / total) * 100, 1) if total > 0 else 0.0
+
+        zone_rows.append({
+            "zone": zone,
+            "total": total,
+            "violations": violations,
+            "compliance_percent": compliance_percent
+        })
+
+    # Sort worst (lowest compliance) first
+    zone_rows = sorted(zone_rows, key=lambda r: r["compliance_percent"])
+
+    threshold = 90.0
+
     return render_template(
         "dashboard.html",
         stats=stats,
         top_event_types=top_event_types,
-        top_zones=top_zones
+        top_zones=top_zones,
+        zone_rows=zone_rows,
+        threshold=threshold
     )
 
 
