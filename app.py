@@ -31,6 +31,7 @@ MQTT_BROKER_PORT = 1883
 MQTT_TOPIC = "grsee/events"
 ENABLE_MQTT = True
 
+USE_JSON_FALLBACK = False  # clean slate on startup (MQTT-only)
 
 # -----------------------
 # JSON fallback loader
@@ -60,13 +61,19 @@ def event_to_dict(e: Event):
 
 def get_events_source():
     """
-    Prefer DB if it has events; otherwise fall back to JSON file.
-    Returns list of dict events.
+    Prefer DB if it has events. If DB is empty:
+    - If USE_JSON_FALLBACK is True, load mock events from JSON.
+    - Otherwise return an empty list (clean slate).
     """
     db_events = Event.query.order_by(Event.timestamp.desc()).all()
     if db_events:
         return [event_to_dict(e) for e in db_events]
-    return sorted(load_events_json(), key=lambda e: e.get("timestamp", ""), reverse=True)
+
+    if USE_JSON_FALLBACK:
+        return sorted(load_events_json(), key=lambda e: e.get("timestamp", ""), reverse=True)
+
+    return []
+
 
 
 def compute_dashboard_stats(events):
