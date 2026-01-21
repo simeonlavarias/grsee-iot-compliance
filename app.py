@@ -4,6 +4,10 @@ from pathlib import Path
 import io
 import csv
 from datetime import datetime
+import threading
+import time
+
+import paho.mqtt.client as mqtt
 
 from rule_engine import evaluate_event
 from models import db, Device, Event, Incident
@@ -20,6 +24,12 @@ db.init_app(app)
 DATA_PATH = Path(__file__).parent / "data" / "mock_events.json"
 
 THRESHOLD = 90.0  # zone threshold
+
+# --- MQTT configuration (minimal simulation) ---
+MQTT_BROKER_HOST = "127.0.0.1"
+MQTT_BROKER_PORT = 1883
+MQTT_TOPIC = "grsee/events"
+ENABLE_MQTT = True
 
 
 # -----------------------
@@ -147,6 +157,188 @@ def build_violations_list(events):
 
 
 # -----------------------
+# Incident auto-creation
+# -----------------------
+def sync_incidents_from_events():
+    """
+    Auto-create incidents in DB for any DB events that are violations.
+    Safe to call multiple times (no duplicates).
+    Only runs when events are coming from the database.
+    """
+    first = Event.query.first()
+    if not first:
+        return 0
+
+    created = 0
+    db_events = Event.query.all()
+
+    for ev in db_events:
+        existing = Incident.query.filter_by(event_id_fk=ev.id).first()
+        if existing:
+            continue
+
+        e_dict = {
+            "event_id": ev.event_id,
+            "timestamp": ev.timestamp,
+            "device_type": ev.device_type,
+            "zone": ev.zone,
+            "event_type": ev.event_type,
+            "severity": ev.severity,
+            "summary": ev.summary
+        }
+
+        proc = evaluate_event(e_dict)
+
+        if proc["policy_result"]["is_violation"] and proc["incident"].get("create_incident"):
+            inc = Incident(
+                incident_type=proc["incident"].get("incident_type") or "UNSPECIFIED",
+                status="open",
+                event_id_fk=ev.id
+            )
+            db.session.add(inc)
+            created += 1
+
+    if created > 0:
+        db.session.commit()
+
+    return created
+
+
+def get_incident_widget_data(limit=5):
+    open_count = Incident.query.filter_by(status="open").count()
+
+    recent = (
+        Incident.query
+        .order_by(Incident.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    recent_list = []
+    for inc in recent:
+        event_public_id = inc.event.event_id if getattr(inc, "event", None) else None
+        recent_list.append({
+            "id": inc.id,
+            "incident_type": inc.incident_type,
+            "status": inc.status,
+            "created_at": inc.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "event_id": event_public_id
+        })
+
+    return open_count, recent_list
+
+
+# -----------------------
+# MQTT ingestion helpers
+# -----------------------
+def _upsert_device_for_event(e: dict):
+    device_key = f"{e.get('device_type', 'UNKNOWN')}_{e.get('zone', 'UNKNOWN')}"
+    device = Device.query.filter_by(device_id=device_key).first()
+
+    if not device:
+        device = Device(
+            device_id=device_key,
+            device_type=e.get("device_type", "UNKNOWN"),
+            zone=e.get("zone", "UNKNOWN"),
+            status="active",
+            last_seen=e.get("timestamp")
+        )
+        db.session.add(device)
+        db.session.flush()
+    else:
+        device.last_seen = e.get("timestamp")
+
+    return device
+
+
+def _insert_event_to_db(e: dict):
+    eid = e.get("event_id")
+    if not eid:
+        return False
+
+    exists = Event.query.filter_by(event_id=eid).first()
+    if exists:
+        return False
+
+    device = _upsert_device_for_event(e)
+
+    ev = Event(
+        event_id=eid,
+        device_id_fk=device.id,
+        timestamp=e.get("timestamp", ""),
+        device_type=e.get("device_type", ""),
+        zone=e.get("zone", ""),
+        event_type=e.get("event_type", ""),
+        severity=e.get("severity", ""),
+        summary=e.get("summary", ""),
+        payload_json=json.dumps(e, ensure_ascii=False)
+    )
+    db.session.add(ev)
+    db.session.commit()
+    return True
+
+
+# -----------------------
+# MQTT subscriber (stable)
+# -----------------------
+def start_mqtt_subscriber():
+    print("[MQTT] start_mqtt_subscriber() CALLED")
+
+    if not ENABLE_MQTT:
+        print("[MQTT] Disabled.")
+        return
+
+    def on_connect(client, userdata, flags, rc):
+        print(f"[MQTT] on_connect fired rc={rc}")
+        if rc == 0:
+            print(f"[MQTT] Connected. Subscribing to {MQTT_TOPIC}")
+            client.subscribe(MQTT_TOPIC, qos=1)
+        else:
+            print(f"[MQTT] Connection failed rc={rc}")
+
+    def on_disconnect(client, userdata, rc):
+        print(f"[MQTT] Disconnected rc={rc}")
+
+    def on_message(client, userdata, msg):
+        try:
+            payload = msg.payload.decode("utf-8")
+            e = json.loads(payload)
+
+            with app.app_context():
+                inserted = _insert_event_to_db(e)
+                if inserted:
+                    created = sync_incidents_from_events()
+                    print(f"[MQTT] Stored event_id={e.get('event_id')} (incidents created={created})")
+                else:
+                    print(f"[MQTT] Duplicate/invalid event ignored: {e.get('event_id')}")
+        except Exception as ex:
+            print("[MQTT] Error processing message:", ex)
+
+    def run():
+        client = mqtt.Client(
+            client_id=f"grsee-subscriber-{int(time.time())}",
+            protocol=mqtt.MQTTv311,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION1
+        )
+
+        client.on_connect = on_connect
+        client.on_disconnect = on_disconnect
+        client.on_message = on_message
+
+        client.enable_logger()  # IMPORTANT: shows connect errors
+        client.reconnect_delay_set(min_delay=1, max_delay=10)
+
+        print(f"[MQTT] Connecting to {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT} ...")
+        client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
+
+        print("[MQTT] connect() called, entering loop_forever() ...")
+        client.loop_forever()
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    print("[MQTT] Subscriber thread started.")
+
+# -----------------------
 # Routes (UI)
 # -----------------------
 @app.route("/")
@@ -156,6 +348,8 @@ def home():
 
 @app.route("/dashboard")
 def dashboard():
+    sync_incidents_from_events()
+
     events = get_events_source()
     stats = compute_dashboard_stats(events)
     zone_rows = build_zone_rows(events, threshold=THRESHOLD)
@@ -163,13 +357,17 @@ def dashboard():
     top_event_types = sorted(stats["event_type_counts"].items(), key=lambda x: x[1], reverse=True)[:5]
     top_zones = sorted(stats["zone_counts"].items(), key=lambda x: x[1], reverse=True)[:5]
 
+    open_incidents_count, recent_incidents = get_incident_widget_data(limit=5)
+
     return render_template(
         "dashboard.html",
         stats=stats,
         top_event_types=top_event_types,
         top_zones=top_zones,
         zone_rows=zone_rows,
-        threshold=THRESHOLD
+        threshold=THRESHOLD,
+        open_incidents_count=open_incidents_count,
+        recent_incidents=recent_incidents
     )
 
 
@@ -188,6 +386,7 @@ def events_page():
 
 @app.route("/violations")
 def violations_page():
+    sync_incidents_from_events()
     events = get_events_source()
     violations_only = build_violations_list(events)
     return render_template("violations.html", violations=violations_only)
@@ -244,8 +443,12 @@ def report_csv():
     for v in violations:
         raw = v["raw"]
         proc = v["proc"]
-        iso_controls = "; ".join([f'{c.get("control_id")} {c.get("title")}' for c in proc["compliance_mapping"]["iso27001_controls"]])
-        pci_reqs = "; ".join([f'{r.get("requirement_id")} {r.get("title")}' for r in proc["compliance_mapping"]["pcidss_requirements"]])
+        iso_controls = "; ".join(
+            [f'{c.get("control_id")} {c.get("title")}' for c in proc["compliance_mapping"]["iso27001_controls"]]
+        )
+        pci_reqs = "; ".join(
+            [f'{r.get("requirement_id")} {r.get("title")}' for r in proc["compliance_mapping"]["pcidss_requirements"]]
+        )
 
         writer.writerow([
             raw.get("event_id"),
@@ -283,10 +486,6 @@ def init_db():
 
 @app.route("/admin/seed")
 def seed_db_from_json():
-    """
-    Imports events from data/mock_events.json into SQLite.
-    Safe to run multiple times (skips existing event_id).
-    """
     with app.app_context():
         db.create_all()
 
@@ -304,8 +503,7 @@ def seed_db_from_json():
                 skipped += 1
                 continue
 
-            # Create/find device entry (very simple)
-            device_key = f"{e.get('device_type','UNKNOWN')}_{e.get('zone','UNKNOWN')}"
+            device_key = f"{e.get('device_type', 'UNKNOWN')}_{e.get('zone', 'UNKNOWN')}"
             device = Device.query.filter_by(device_id=device_key).first()
             if not device:
                 device = Device(
@@ -316,7 +514,7 @@ def seed_db_from_json():
                     last_seen=e.get("timestamp")
                 )
                 db.session.add(device)
-                db.session.flush()  # so device.id is available
+                db.session.flush()
 
             ev = Event(
                 event_id=eid,
@@ -342,11 +540,6 @@ def seed_db_from_json():
 # -----------------------
 @app.route("/api/events", methods=["GET"])
 def api_events():
-    """
-    Returns events from DB if available (else JSON fallback).
-    Query params:
-      - limit (default 100)
-    """
     limit = int(request.args.get("limit", "100"))
     events = get_events_source()[:limit]
     return jsonify({"count": len(events), "events": events})
@@ -364,7 +557,7 @@ def api_dashboard():
 def api_violations():
     events = get_events_source()
     violations = build_violations_list(events)
-    # return simplified payload
+
     out = []
     for v in violations:
         raw = v["raw"]
@@ -380,9 +573,6 @@ def api_violations():
 
 @app.route("/api/incidents", methods=["GET"])
 def api_incidents():
-    """
-    Incidents table is ready, but we only return what exists for now.
-    """
     incidents = Incident.query.order_by(Incident.created_at.desc()).all()
     out = []
     for i in incidents:
@@ -395,6 +585,21 @@ def api_incidents():
         })
     return jsonify({"count": len(out), "incidents": out})
 
+@app.route("/admin/reset")
+def admin_reset():
+    Incident.query.delete()
+    Event.query.delete()
+    Device.query.delete()
+    db.session.commit()
+    return "Reset complete: cleared Device, Event, Incident."
 
+
+# -----------------------
+# Main
+# -----------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    with app.app_context():
+        db.create_all()
+
+    start_mqtt_subscriber()
+    app.run(debug=True, use_reloader=False)

@@ -26,6 +26,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   overflow: hidden;
   border-radius: 10px;
 }
@@ -34,6 +35,8 @@ th, td {
   text-align: left;
   padding: 12px;
   border-bottom: 1px solid #eee;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 th {
@@ -105,4 +108,38 @@ th {
   .grid-2 {
     grid-template-columns: 1fr;
   }
+}
+
+.col-time {
+  width: 140px;
+}
+
+.col-device {
+  width: 90px;
+}
+
+.col-zone {
+  width: 120px;
+}
+
+.col-event {
+  width: 200px;
+}
+
+.col-severity {
+  width: 90px;
+}
+
+.col-status {
+  width: 110px;
+}
+
+.col-summary {
+  max-width: 280px;
+}
+
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -78,7 +78,12 @@ class Incident(db.Model):
     incident_type = db.Column(db.String(64), nullable=False)
     status = db.Column(db.String(20), default="open", nullable=False)  # open/ack/resolved
 
-    event_id_fk = db.Column(db.Integer, db.ForeignKey("events.id"), nullable=True)
+    # One incident per event (prevents duplicates)
+    event_id_fk = db.Column(db.Integer, db.ForeignKey("events.id"), unique=True, nullable=False)
+
+    # Relationship so we can do incident.event
+    event = db.relationship("Event", backref=db.backref("incident", uselist=False))
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 

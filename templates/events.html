@@ -20,13 +20,13 @@
     <table>
       <thead>
         <tr>
-          <th>Time</th>
-          <th>Device</th>
-          <th>Zone</th>
-          <th>Event</th>
-          <th>Severity</th>
-          <th>Status</th>
-          <th>Summary</th>
+          <th class="col-time">Time</th>
+          <th class="col-device">Device</th>
+          <th class="col-zone">Zone</th>
+          <th class="col-event">Event</th>
+          <th class="col-severity">Severity</th>
+          <th class="col-status">Status</th>
+          <th class="col-summary">Summary</th>
           <th>Details</th>
         </tr>
       </thead>
@@ -34,18 +34,20 @@
       <tbody>
         {% for e in events %}
         <tr>
-          <td>{{ e.timestamp }}</td>
-          <td>{{ e.device_type }}</td>
-          <td>{{ e.zone }}</td>
-          <td>{{ e.event_type }}</td>
+          <td class="col-time">{{ e.timestamp }}</td>
+          <td class="col-device">{{ e.device_type }}</td>
+          <td class="col-zone">{{ e.zone }}</td>
+
+          <!-- Event type (truncate to prevent overflow) -->
+          <td class="col-event truncate" title="{{ e.event_type }}">{{ e.event_type }}</td>
 
           <!-- Severity -->
-          <td class="sev sev-{{ e.severity|lower }}">
+          <td class="col-severity sev sev-{{ e.severity|lower }}">
             {{ e.severity }}
           </td>
 
           <!-- Compliance Status -->
-          <td>
+          <td class="col-status">
             {% if e.compliance_status == "VIOLATION" %}
               <span class="sev sev-high">VIOLATION</span>
             {% else %}
@@ -53,8 +55,8 @@
             {% endif %}
           </td>
 
-          <!-- Summary -->
-          <td>{{ e.summary }}</td>
+          <!-- Summary (truncate + tooltip for full text) -->
+          <td class="col-summary truncate" title="{{ e.summary }}">{{ e.summary }}</td>
 
           <!-- Details link -->
           <td>
