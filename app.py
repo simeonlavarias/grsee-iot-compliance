@@ -21,8 +21,6 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 
-DATA_PATH = Path(__file__).parent / "data" / "mock_events.json"
-
 THRESHOLD = 90.0  # zone threshold
 
 # --- MQTT configuration (minimal simulation) ---
@@ -30,18 +28,6 @@ MQTT_BROKER_HOST = "127.0.0.1"
 MQTT_BROKER_PORT = 1883
 MQTT_TOPIC = "grsee/events"
 ENABLE_MQTT = True
-
-USE_JSON_FALLBACK = False  # clean slate on startup (MQTT-only)
-
-# -----------------------
-# JSON fallback loader
-# -----------------------
-def load_events_json():
-    if not DATA_PATH.exists():
-        return []
-    with open(DATA_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
 
 # -----------------------
 # DB helpers
@@ -68,10 +54,6 @@ def get_events_source():
     db_events = Event.query.order_by(Event.timestamp.desc()).all()
     if db_events:
         return [event_to_dict(e) for e in db_events]
-
-    if USE_JSON_FALLBACK:
-        return sorted(load_events_json(), key=lambda e: e.get("timestamp", ""), reverse=True)
-
     return []
 
 
@@ -489,58 +471,6 @@ def init_db():
     with app.app_context():
         db.create_all()
     return "DB initialized (tables created)."
-
-
-@app.route("/admin/seed")
-def seed_db_from_json():
-    with app.app_context():
-        db.create_all()
-
-        events = load_events_json()
-        inserted = 0
-        skipped = 0
-
-        for e in events:
-            eid = e.get("event_id")
-            if not eid:
-                continue
-
-            exists = Event.query.filter_by(event_id=eid).first()
-            if exists:
-                skipped += 1
-                continue
-
-            device_key = f"{e.get('device_type', 'UNKNOWN')}_{e.get('zone', 'UNKNOWN')}"
-            device = Device.query.filter_by(device_id=device_key).first()
-            if not device:
-                device = Device(
-                    device_id=device_key,
-                    device_type=e.get("device_type", "UNKNOWN"),
-                    zone=e.get("zone", "UNKNOWN"),
-                    status="active",
-                    last_seen=e.get("timestamp")
-                )
-                db.session.add(device)
-                db.session.flush()
-
-            ev = Event(
-                event_id=eid,
-                device_id_fk=device.id,
-                timestamp=e.get("timestamp", ""),
-                device_type=e.get("device_type", ""),
-                zone=e.get("zone", ""),
-                event_type=e.get("event_type", ""),
-                severity=e.get("severity", ""),
-                summary=e.get("summary", ""),
-                payload_json=json.dumps(e, ensure_ascii=False)
-            )
-            db.session.add(ev)
-            inserted += 1
-
-        db.session.commit()
-
-    return f"Seed complete. Inserted={inserted}, Skipped(existing)={skipped}"
-
 
 # -----------------------
 # API Endpoints (MVP)
